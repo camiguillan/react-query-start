@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Mutation, QueryClient } from '@tanstack/react-query';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { fetchEvent, updateEvent } from '../../util/https.js';
+import { fetchEvent, queryClient, updateEvent } from '../../util/https.js';
 import { useParams } from 'react-router-dom';
 
 import Modal from '../UI/Modal.jsx';
@@ -19,7 +19,20 @@ export default function EditEvent() {
   })
 
   const {mutate, isError: isErrorMutation,  error: errorMutation } = useMutation({
-    mutationFn: updateEvent
+    mutationFn: updateEvent,
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({queryKey: ['events' , params.id]})
+     const prevEventData =  queryClient.getQueriesData(['events' , params.id]); //in case the update fails, we would want to set the previous dat aup
+      queryClient.setQueryData(['events' , params.id], data.event )
+      return {prevEventData}
+    }
+    ,
+    onError: (error, data, context) => {
+      queryClient.setQueriesData(['events' , params.id], context.prevEventData)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries(['events' , params.id])
+    } //when the mutation has been completed ( error or success)
   })
 
   function handleSubmit(formData) {
