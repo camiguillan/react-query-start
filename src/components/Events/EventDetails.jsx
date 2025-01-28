@@ -5,14 +5,18 @@ import { deleteEvent, fetchEvent } from '../../util/https.js';
 import ErrorBlock from '../UI/ErrorBlock.jsx';
 import { useNavigate } from 'react-router-dom';
 import { queryClient } from '../../util/https.js';
+import Modal from '../UI/Modal.jsx'
 
 const path = 'https://cautious-halibut-r69xr5795762w759-3000.app.github.dev/'
 
 
 export default function EventDetails() {
+
+  const [isDeleting, setIsDeleting] = useState()
+
   const navigate = useNavigate();
   const params = useParams()
-  const {mutate, deleteIsError, deleteError} = useMutation({
+  const {mutate, isPending: isPendingDelete, isError: isErrorDeleting, error: errorDelete} = useMutation({
     mutationFn: deleteEvent, 
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -28,6 +32,15 @@ export default function EventDetails() {
     queryFn: ({signal}) => fetchEvent( {signal,id: params.id} )
 
   })
+
+  function handleStartDelete(){
+    setIsDeleting(true)
+  }
+
+
+  function handleStopDelete(){
+    setIsDeleting(false)
+  }
 
 
   function handleDelete(){
@@ -62,7 +75,7 @@ export default function EventDetails() {
           <header>
           <h1> {data.title}  </h1>
           <nav>
-            <button onClick={handleDelete}>Delete</button>
+            <button onClick={handleStartDelete}>Delete</button>
             <Link to="edit">Edit</Link>
           </nav>
         </header>
@@ -86,6 +99,19 @@ export default function EventDetails() {
 
   return (
     <>
+   {isDeleting && <Modal  onClose={handleStopDelete} >
+      <h2> Are you sure?</h2>
+      <p> Do you really want to delete this event? This action cannot be undone  </p>
+      <div  className='form-actions' >
+        {isPendingDelete && <p> Deleting, please wait.... </p>}
+        {!isPendingDelete &&
+        <>
+        <button onClick={handleStopDelete} className='button-text' > Cancel </button>
+        <button onClick={handleDelete} className='button'  > Delete  </button> 
+        </>}
+          </div>
+          {isErrorDeleting && <ErrorBlock  title='Failed to delete event'  message={errorDelete.info?.message  || 'there was an error while trying to delete this event' } />}
+        </Modal>}
       <Outlet />
       <Header>
         <Link to="/events" className="nav-item">
